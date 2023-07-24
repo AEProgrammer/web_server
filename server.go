@@ -19,16 +19,22 @@ type Server interface {
 }
 
 type HTTPServer struct {
-
+	*router
 }
 
-func (h *HTTPServer) AddRoute(method string, path string, handleFunc HandleFunc) {
-	// Context创建
-
-	// 路由匹配
-
-	// 执行业务逻辑
+func NewHTTPServer() *HTTPServer {
+	return &HTTPServer{
+		newRouter(),
+	}
 }
+
+//func (h *HTTPServer) AddRoute(method string, path string, handleFunc HandleFunc) {
+//	// Context创建
+//
+//	// 路由匹配
+//
+//	// 执行业务逻辑
+//}
 
 func (h *HTTPServer) Get(path string, handleFunc HandleFunc) {
 	h.AddRoute(http.MethodGet, path, handleFunc)
@@ -41,10 +47,18 @@ func (h *HTTPServer) Post(path string, handleFunc HandleFunc) {
 // ServeHTTP 处理请求的入口
 func (h *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	// Context创建
-
+	ctx := &Context{
+		Req: request,
+		Resp: writer,
+	}
 	// 路由匹配
 
 	// 执行业务逻辑
+	h.serve(ctx)
+}
+
+func (h *HTTPServer) serve(ctx *Context) {
+	// 查找路由 执行业务逻辑
 }
 
 func (h *HTTPServer) Start(addr string) error {

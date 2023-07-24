@@ -1,3 +1,8 @@
 package web_server
 
-type Context struct{}
+import "net/http"
+
+type Context struct{
+	Req *http.Request
+	Resp http.ResponseWriter
+}

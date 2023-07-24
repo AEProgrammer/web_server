@@ -14,7 +14,7 @@ func TestServer(t *testing.T) {
 	})
 	
 	h := &HTTPServer{}
-	h.Get("user", func(ctx *Context) {
+	h.Get("/user", func(ctx *Context) {
 		
 	})
 }
