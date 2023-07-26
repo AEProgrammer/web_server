@@ -16,8 +16,32 @@ func TestRouter_AddRoute(t *testing.T) {
 	}{
 		{
 			method: http.MethodGet,
+			path : "/",
+		},
+		{
+			method: http.MethodGet,
+			path : "/user",
+		},
+		{
+			method: http.MethodGet,
 			path : "/user/home",
 		},
+		{
+			method: http.MethodGet,
+			path : "/order/detail",
+		},
+		{
+			method: http.MethodPost,
+			path : "/order/create",
+		},
+		//{
+		//	method: http.MethodPost,
+		//	path : "login",
+		//},
+		//{
+		//	method: http.MethodPost,
+		//	path : "login////",
+		//},
 	}
 	var mockHandler HandleFunc = func(ctx *Context) {}
 
@@ -31,9 +55,11 @@ func TestRouter_AddRoute(t *testing.T) {
 		trees: map[string]*node{
 			http.MethodGet: &node{
 				path: "/",
+				handler: mockHandler,
 				children: map[string]*node{
 					"user": &node{
 						path: "user",
+						handler: mockHandler,
 						children: map[string]*node{
 							"home": &node{
 								path: "home",
@@ -41,14 +67,63 @@ func TestRouter_AddRoute(t *testing.T) {
 							},
 						},
 					},
+					"order" : &node {
+						path: "order",
+						children: map[string]*node {
+							"detail" : &node {
+								path: "detail",
+								handler: mockHandler,
+							},
+						},
+					},
+				},
+			},
+			http.MethodPost: &node {
+				path: "/",
+				children: map[string]*node{
+					"order" : &node {
+						path: "order",
+						children: map[string]*node {
+							"create" : &node {
+								path: "create",
+								handler: mockHandler,
+							},
+						},
+					},
 				},
 			},
 		},
+
 	}
 
 	// 断言两者相等
 	msg, ok := wantRouter.equal(r)
 	assert.True(t, ok, msg)
+
+	//r = newRouter()
+	//assert.Panics(t, func() {
+	//	r.AddRoute(http.MethodGet, "",  mockHandler)
+	//})
+}
+
+func TestRouter_AddRoute_failed(t *testing.T) {
+
+
+	var mockHandler HandleFunc
+
+	r := newRouter()
+	r.AddRoute(http.MethodGet, "", mockHandler)
+	assert.True(t, len(r.trees) == 0, "")
+
+	r = newRouter()
+	r.AddRoute(http.MethodGet, "login", mockHandler)
+	assert.True(t, len(r.trees) == 1, "")
+	assert.True(t, r.trees["GET"].path == "/", "")
+
+	r = newRouter()
+	r.AddRoute(http.MethodGet, "/login///", mockHandler)
+	assert.True(t, len(r.trees) == 1, "")
+	assert.True(t, r.trees["GET"].path == "/", "")
 }
 
 func (r *router) equal(y *router) (string, bool) {
