@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestRouter_AddRoute(t *testing.T) {
+func TestRouter_addRoute(t *testing.T) {
 	// 构造路由树
 	testRoutes := []struct{
 		method string
@@ -43,11 +43,11 @@ func TestRouter_AddRoute(t *testing.T) {
 		//	path : "login////",
 		//},
 	}
-	var mockHandler HandleFunc = func(ctx *Context) {}
+	mockHandler := func(ctx *Context) {}
 
 	r := newRouter()
 	for _, route := range testRoutes {
-		r.AddRoute(route.method, route.path, mockHandler)
+		r.addRoute(route.method, route.path, mockHandler)
 	}
 
 	// 断言路由树与预期一摸一样
@@ -102,28 +102,40 @@ func TestRouter_AddRoute(t *testing.T) {
 
 	//r = newRouter()
 	//assert.Panics(t, func() {
-	//	r.AddRoute(http.MethodGet, "",  mockHandler)
+	//	r.addRoute(http.MethodGet, "",  mockHandler)
 	//})
 }
 
-func TestRouter_AddRoute_failed(t *testing.T) {
+func TestRouter_addRoute_failed(t *testing.T) {
 
 
-	var mockHandler HandleFunc
+	mockHandler := func(ctx *Context) {}
 
 	r := newRouter()
-	r.AddRoute(http.MethodGet, "", mockHandler)
+	r.addRoute(http.MethodGet, "", mockHandler)
 	assert.True(t, len(r.trees) == 0, "")
 
 	r = newRouter()
-	r.AddRoute(http.MethodGet, "login", mockHandler)
+	r.addRoute(http.MethodGet, "login", mockHandler)
 	assert.True(t, len(r.trees) == 1, "")
 	assert.True(t, r.trees["GET"].path == "/", "")
 
 	r = newRouter()
-	r.AddRoute(http.MethodGet, "/login///", mockHandler)
+	r.addRoute(http.MethodGet, "/login///", mockHandler)
 	assert.True(t, len(r.trees) == 1, "")
 	assert.True(t, r.trees["GET"].path == "/", "")
+
+	r = newRouter()
+	r.addRoute(http.MethodGet, "/", mockHandler)
+	assert.Panicsf(t, func() {
+		r.addRoute(http.MethodGet, "/", mockHandler)
+	}, "重复注册，路由冲突[/]")
+
+	r = newRouter()
+	r.addRoute(http.MethodGet, "/a/b/c", mockHandler)
+	assert.Panicsf(t, func() {
+		r.addRoute(http.MethodGet, "/a/b/c", mockHandler)
+	}, "重复注册，路由冲突[/a/b/c]")
 }
 
 func (r *router) equal(y *router) (string, bool) {

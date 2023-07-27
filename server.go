@@ -15,7 +15,7 @@ type Server interface {
 	Start(addr string) error
 
 	// AddRoute 增加路由注册功能 method是http方法 path是路径
-	AddRoute(method string, path string, handleFunc HandleFunc)
+	addRoute(method string, path string, handleFunc HandleFunc)
 }
 
 type HTTPServer struct {
@@ -37,11 +37,11 @@ func NewHTTPServer() *HTTPServer {
 //}
 
 func (h *HTTPServer) Get(path string, handleFunc HandleFunc) {
-	h.AddRoute(http.MethodGet, path, handleFunc)
+	h.addRoute(http.MethodGet, path, handleFunc)
 }
 
 func (h *HTTPServer) Post(path string, handleFunc HandleFunc) {
-	h.AddRoute(http.MethodPost, path, handleFunc)
+	h.addRoute(http.MethodPost, path, handleFunc)
 }
 
 // ServeHTTP 处理请求的入口

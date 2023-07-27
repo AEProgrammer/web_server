@@ -9,7 +9,7 @@ func TestServer(t *testing.T) {
 	var s Server = &HTTPServer{}
 	http.ListenAndServe(":8081", s)
 	
-	s.AddRoute(http.MethodGet, "get", func(ctx *Context) {
+	s.addRoute(http.MethodGet, "get", func(ctx *Context) {
 		
 	})
 	
