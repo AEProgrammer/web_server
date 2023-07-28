@@ -180,3 +180,98 @@ func (n *node) equal(y *node) (string, bool) {
 	}
 	return "", true
 }
+
+func TestRouter_findRoute(t *testing.T) {
+	testRoute := []struct{
+		method string
+		path string
+	}{
+		//{
+		//	method: http.MethodGet,
+		//	path : "/",
+		//},
+		//{
+		//	method: http.MethodGet,
+		//	path : "/user",
+		//},
+		//{
+		//	method: http.MethodGet,
+		//	path : "/user/home",
+		//},
+		{
+			method: http.MethodGet,
+			path : "/order/detail",
+		},
+		//{
+		//	method: http.MethodPost,
+		//	path : "/order/create",
+		//},
+	}
+	r := newRouter()
+	mockHandler := func(ctx *Context) {}
+	for _, route := range testRoute {
+		r.addRoute(route.method, route.path, mockHandler)
+	}
+
+	testCase := []struct{
+		name string
+		method string
+		path string
+		wantFound bool
+		wantNode *node
+	}{
+		{
+			name: "method notfound",
+			method: http.MethodHead,
+			path : "/order/detail",
+			wantFound: false,
+		},
+		{
+			name: "order detail",
+			method: http.MethodGet,
+			path : "/order/detail",
+			wantFound: true,
+			wantNode: &node{
+				path: "detail",
+				handler: mockHandler,
+			},
+		},
+		{
+			name: "root node",
+			method: http.MethodGet,
+			path : "/",
+			wantFound: true,
+			wantNode: &node{
+				path: "/",
+				children: map[string]*node{
+					"order": &node{
+						path: "order",
+						children: map[string]*node {
+							"detail": &node{
+								path: "detail" ,
+								handler: mockHandler,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			n, found := r.findRoute(tc.method, tc.path)
+			assert.Equal(t, tc.wantFound, found)
+			if !found {
+				return
+			}
+			// 断言两者相等
+			msg, ok := tc.wantNode.equal(n)
+			assert.True(t, ok, msg)
+			//assert.Equal(t, tc.wantNode.path, n.path)
+			//assert.Equal(t, tc.wantNode.children, n.children)
+			//nHandler := reflect.ValueOf(n.handler)
+			//yHandler := reflect.ValueOf(tc.wantNode.handler)
+			//assert.True(t, nHandler == yHandler)
+		})
+	}
+}

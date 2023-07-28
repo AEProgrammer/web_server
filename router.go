@@ -74,6 +74,30 @@ func (r *router) addRoute(method string, path string, handleFunc HandleFunc) {
 	root.handler = handleFunc
 }
 
+func(r *router) findRoute(method string, path string) (*node, bool) {
+	// 深度查找路由树
+	// 如果http method没有被注册
+	root, ok := r.trees[method]
+	if !ok {
+		return nil ,false
+	}
+
+	if path == "/" {
+		return root, true
+	}
+
+	path = strings.Trim(path, "/")
+	segs := strings.Split(path, "/")
+	for _, seg := range segs {
+		child, found := root.childOf(seg)
+		if !found {
+			return nil, false
+		}
+		root = child
+	}
+	return root, root.handler != nil
+}
+
 func (n *node) childOrCreate(seg string) *node {
 	if n.children == nil {
 		n.children = make(map[string]*node)
@@ -87,6 +111,14 @@ func (n *node) childOrCreate(seg string) *node {
 		n.children[seg] = child
 	}
 	return child
+}
+
+func (n *node) childOf(path string) (*node, bool) {
+	if n.children == nil {
+		return nil, false
+	}
+	child, ok := n.children[path]
+	return child, ok
 }
 
 type node struct {
