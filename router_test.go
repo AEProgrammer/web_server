@@ -10,30 +10,50 @@ import (
 
 func TestRouter_addRoute(t *testing.T) {
 	// 构造路由树
-	testRoutes := []struct{
+	testRoutes := []struct {
 		method string
-		path string
+		path   string
 	}{
 		{
 			method: http.MethodGet,
-			path : "/",
+			path:   "/",
 		},
 		{
 			method: http.MethodGet,
-			path : "/user",
+			path:   "/user",
 		},
 		{
 			method: http.MethodGet,
-			path : "/user/home",
+			path:   "/user/home",
 		},
 		{
 			method: http.MethodGet,
-			path : "/order/detail",
+			path:   "/order/detail",
+		},
+		{
+			method: http.MethodGet,
+			path:   "/order/detail/:id",
 		},
 		{
 			method: http.MethodPost,
-			path : "/order/create",
+			path:   "/order/create",
 		},
+		{
+			method: http.MethodGet,
+			path:   "/order/*",
+		},
+		{
+			method: http.MethodGet,
+			path:   "/*",
+		},
+		//{
+		//	method: http.MethodGet,
+		//	path:   "/*/*",
+		//},
+		//{
+		//	method: http.MethodGet,
+		//	path:   "/*/abc",
+		//},
 		//{
 		//	method: http.MethodPost,
 		//	path : "login",
@@ -54,38 +74,50 @@ func TestRouter_addRoute(t *testing.T) {
 	wantRouter := &router{
 		trees: map[string]*node{
 			http.MethodGet: &node{
-				path: "/",
+				path:    "/",
 				handler: mockHandler,
 				children: map[string]*node{
 					"user": &node{
-						path: "user",
+						path:    "user",
 						handler: mockHandler,
 						children: map[string]*node{
 							"home": &node{
-								path: "home",
+								path:    "home",
 								handler: mockHandler,
 							},
 						},
 					},
-					"order" : &node {
+					"order": &node{
 						path: "order",
-						children: map[string]*node {
-							"detail" : &node {
-								path: "detail",
+						children: map[string]*node{
+							"detail": &node{
+								path:    "detail",
 								handler: mockHandler,
+								paramChild: &node{
+									path:    ":id",
+									handler: mockHandler,
+								},
 							},
+						},
+						startChild: &node{
+							path:    "*",
+							handler: mockHandler,
 						},
 					},
 				},
+				startChild: &node{
+					path:    "*",
+					handler: mockHandler,
+				},
 			},
-			http.MethodPost: &node {
+			http.MethodPost: &node{
 				path: "/",
 				children: map[string]*node{
-					"order" : &node {
+					"order": &node{
 						path: "order",
-						children: map[string]*node {
-							"create" : &node {
-								path: "create",
+						children: map[string]*node{
+							"create": &node{
+								path:    "create",
 								handler: mockHandler,
 							},
 						},
@@ -93,7 +125,6 @@ func TestRouter_addRoute(t *testing.T) {
 				},
 			},
 		},
-
 	}
 
 	// 断言两者相等
@@ -107,7 +138,6 @@ func TestRouter_addRoute(t *testing.T) {
 }
 
 func TestRouter_addRoute_failed(t *testing.T) {
-
 
 	mockHandler := func(ctx *Context) {}
 
@@ -136,6 +166,11 @@ func TestRouter_addRoute_failed(t *testing.T) {
 	assert.Panicsf(t, func() {
 		r.addRoute(http.MethodGet, "/a/b/c", mockHandler)
 	}, "重复注册，路由冲突[/a/b/c]")
+
+	r = newRouter()
+	assert.Panicsf(t, func() {
+		r.addRoute(http.MethodGet, "/*/abc", mockHandler)
+	}, "禁止在*之后再注册路由[ab]")
 }
 
 func (r *router) equal(y *router) (string, bool) {
@@ -161,6 +196,26 @@ func (n *node) equal(y *node) (string, bool) {
 		return fmt.Sprintf("子节点数量不相等"), false
 	}
 
+	// 检查通配符路径节点是否一致
+	if (n.startChild == nil && y.startChild != nil) || (n.startChild != nil && y.startChild == nil) {
+		return fmt.Sprintf("通配符节点数量不匹配"), false
+	} else if n.startChild != nil && y.startChild != nil {
+		msg, ok := n.startChild.equal(y.startChild)
+		if !ok {
+			return msg, ok
+		}
+	}
+
+	// 检查参数路径节点是否一致
+	if (n.paramChild == nil && y.paramChild != nil) || (n.paramChild != nil && y.paramChild == nil) {
+		return fmt.Sprintf("参数路径节点数量不匹配"), false
+	} else if n.paramChild != nil && y.paramChild != nil {
+		msg, ok := n.paramChild.equal(y.paramChild)
+		if !ok {
+			return msg, ok
+		}
+	}
+
 	// 比较handler
 	nHandler := reflect.ValueOf(n.handler)
 	yHandler := reflect.ValueOf(y.handler)
@@ -182,9 +237,9 @@ func (n *node) equal(y *node) (string, bool) {
 }
 
 func TestRouter_findRoute(t *testing.T) {
-	testRoute := []struct{
+	testRoute := []struct {
 		method string
-		path string
+		path   string
 	}{
 		//{
 		//	method: http.MethodGet,
@@ -200,7 +255,11 @@ func TestRouter_findRoute(t *testing.T) {
 		//},
 		{
 			method: http.MethodGet,
-			path : "/order/detail",
+			path:   "/order/detail",
+		},
+		{
+			method: http.MethodGet,
+			path:   "/order/*",
 		},
 		//{
 		//	method: http.MethodPost,
@@ -213,42 +272,55 @@ func TestRouter_findRoute(t *testing.T) {
 		r.addRoute(route.method, route.path, mockHandler)
 	}
 
-	testCase := []struct{
-		name string
-		method string
-		path string
+	testCase := []struct {
+		name      string
+		method    string
+		path      string
 		wantFound bool
-		wantNode *node
+		wantNode  *node
 	}{
 		{
-			name: "method notfound",
-			method: http.MethodHead,
-			path : "/order/detail",
+			// 方法不存在
+			name:      "method notfound",
+			method:    http.MethodHead,
+			path:      "/order/detail",
 			wantFound: false,
 		},
 		{
-			name: "order detail",
-			method: http.MethodGet,
-			path : "/order/detail",
+			// 完全命中
+			name:      "order detail",
+			method:    http.MethodGet,
+			path:      "/order/detail",
 			wantFound: true,
 			wantNode: &node{
-				path: "detail",
+				path:    "detail",
 				handler: mockHandler,
 			},
 		},
 		{
-			name: "root node",
-			method: http.MethodGet,
-			path : "/",
+			// 通过通配符命中
+			name:      "order *",
+			method:    http.MethodGet,
+			path:      "/order/abc",
+			wantFound: true,
+			wantNode: &node{
+				path:    "*",
+				handler: mockHandler,
+			},
+		},
+		{
+			name:      "root node",
+			method:    http.MethodGet,
+			path:      "/",
 			wantFound: true,
 			wantNode: &node{
 				path: "/",
 				children: map[string]*node{
 					"order": &node{
 						path: "order",
-						children: map[string]*node {
+						children: map[string]*node{
 							"detail": &node{
-								path: "detail" ,
+								path:    "detail",
 								handler: mockHandler,
 							},
 						},
